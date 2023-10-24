@@ -2,18 +2,16 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 
-from data.config import ADMINS, CHANNELS
+from filters.is_admin import AdminFilter
 from keyboards.default.admin_menu import admin_main_menu
 from keyboards.default.little import phone_number_share
 from keyboards.default.user_menu import user_main_menu
-from keyboards.inline.user_keyboards import channels_keyboards
 from loader import dp, db_manager
 from states.users import Register
 from test import login
-from utils.random_number import check_user_membership
 
 
-@dp.message_handler(commands="start", chat_id=ADMINS)
+@dp.message_handler(AdminFilter(), commands="start")
 async def admin_start_handler(message: types.Message):
     text = "Botga xush kelibsiz xo'jayin. 😊"
     await message.answer(text=text, reply_markup=admin_main_menu)
@@ -21,27 +19,14 @@ async def admin_start_handler(message: types.Message):
 
 @dp.message_handler(commands="start", state="*")
 async def start_handler(message: types.Message, state: FSMContext):
-    check = True
-    not_member = []
-    for channel in CHANNELS:
-        if await check_user_membership(chat_id=message.chat.id, channel_id=channel['id']):
-            pass
-        else:
-            not_member.append(channel)
-            check = False
-
-    if check:
-        if db_manager.get_user(message):
-            text = "Botga xush kelibsiz. 😊"
-            await message.answer(text=text, reply_markup=user_main_menu)
-            await state.finish()
-        else:
-            text = "Iltimos to'liq ismingizni kiriting."
-            await message.answer(text=text)
-            await Register.full_name.set()
+    if db_manager.get_user(message):
+        text = "Botga xush kelibsiz. 😊"
+        await message.answer(text=text, reply_markup=user_main_menu)
+        await state.finish()
     else:
-        text = "Botni ishga tushirish uchun, ushbu kanllarga a'zo bo'ling"
-        await message.answer(text=text, reply_markup=await channels_keyboards(not_member))
+        text = "Iltimos to'liq ismingizni kiriting."
+        await message.answer(text=text)
+        await Register.full_name.set()
 
 
 @dp.message_handler(state=Register.full_name)
